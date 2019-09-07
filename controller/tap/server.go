@@ -359,6 +359,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 
 		switch orig := orig.GetEvent().(type) {
 		case *proxy.TapEvent_Http_RequestInit_:
+			log.Debugf("TapEvent_RequestInit Headers: %s", orig.RequestInit.GetHeaders())
 			return &public.TapEvent_Http_{
 				Http: &public.TapEvent_Http{
 					Event: &public.TapEvent_Http_RequestInit_{
