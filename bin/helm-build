@@ -20,16 +20,12 @@ if [ "$1" == "deploy" ]; then
     clean_head || { echo "There are uncommitted changes"; exit 1; }
 
     regex='(edge|stable)-([0-9]+\.[0-9]+\.[0-9]+)'
-    echo "foo"
-    echo "TAG: $tag"
     if [[ ! "$tag" =~ $regex ]]; then
         echo "Version tag is malformed"
         exit 1
     fi;
     repo=${BASH_REMATCH[1]}
-    echo "repo: $repo"
     version=${BASH_REMATCH[2]}
-    echo "version: $version"
-    $bindir/helm --version version --app-version $tag package $rootdir/charts/linkerd2 && $bindir/helm repo index \
+    $bindir/helm --version $version --app-version $tag package $rootdir/charts/linkerd2 && $bindir/helm repo index \
       --url "https://helm.linkerd.io/$repo/" .
 fi;
