@@ -16,7 +16,7 @@ $bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Iss
 
 if [ "$1" == "deploy" ]; then
     . $bindir/_tag.sh
-    tag=named_tag
+    tag=$(named_tag)
     clean_head || { echo "There are uncommitted changes"; exit 1; }
 
     regex='(edge|stable)-([0-9]+\.[0-9]+\.[0-9]+)'
