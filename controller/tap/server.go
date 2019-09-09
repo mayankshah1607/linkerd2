@@ -357,9 +357,19 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 			}
 		}
 
+		headers := func(orig *httpPb.Headers) *public.Headers {
+			var headers []*public.Headers_Header
+			for _, header := range orig.GetHeaders() {
+				headers = append(headers, &public.Headers_Header{Name: header.GetName(), Value: header.GetValue()})
+			}
+
+			return &public.Headers{
+				Headers: headers,
+			}
+		}
+
 		switch orig := orig.GetEvent().(type) {
 		case *proxy.TapEvent_Http_RequestInit_:
-			log.Debugf("TapEvent_RequestInit Headers: %s", orig.RequestInit.GetHeaders())
 			return &public.TapEvent_Http_{
 				Http: &public.TapEvent_Http{
 					Event: &public.TapEvent_Http_RequestInit_{
@@ -369,6 +379,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 							Scheme:    scheme(orig.RequestInit.GetScheme()),
 							Authority: orig.RequestInit.Authority,
 							Path:      orig.RequestInit.Path,
+							Headers:   headers(orig.RequestInit.GetHeaders()),
 						},
 					},
 				},
@@ -382,6 +393,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 							Id:               id(orig.ResponseInit.GetId()),
 							SinceRequestInit: orig.ResponseInit.GetSinceRequestInit(),
 							HttpStatus:       orig.ResponseInit.GetHttpStatus(),
+							Headers:          headers(orig.ResponseInit.GetHeaders()),
 						},
 					},
 				},
@@ -416,6 +428,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 							SinceResponseInit: orig.ResponseEnd.GetSinceResponseInit(),
 							ResponseBytes:     orig.ResponseEnd.GetResponseBytes(),
 							Eos:               eos(orig.ResponseEnd.GetEos()),
+							Trailers:          headers(orig.ResponseEnd.GetTrailers()),
 						},
 					},
 				},
