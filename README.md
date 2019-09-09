@@ -1,4 +1,4 @@
-![Linkerd][logo]
+![Linkerd][logo] 
 
 [![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
