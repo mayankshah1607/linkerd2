@@ -32,8 +32,12 @@
           "headers": {
             "headers": [
               {
-                "name": "header-name",
-                "value": "aGVhZGVyLXZhbHVl"
+                "name": "header1-name",
+                "value": "header1-value"
+              },
+              {
+                "name": "header2-name",
+                "value_bin": "aGVhZGVyMi12YWx1ZQ=="
               }
             ]
           }
@@ -81,8 +85,12 @@
           "trailers": {
             "headers": [
               {
-                "name": "header-name",
-                "value": "aGVhZGVyLXZhbHVl"
+                "name": "header1-name",
+                "value": "header1-value"
+              },
+              {
+                "name": "header2-name",
+                "value_bin": "aGVhZGVyMi12YWx1ZQ=="
               }
             ]
           }

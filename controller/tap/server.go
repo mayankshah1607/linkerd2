@@ -2,6 +2,7 @@ package tap
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"time"
@@ -360,7 +361,17 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		headers := func(orig *httpPb.Headers) *public.Headers {
 			var headers []*public.Headers_Header
 			for _, header := range orig.GetHeaders() {
-				headers = append(headers, &public.Headers_Header{Name: header.GetName(), Value: header.GetValue()})
+				var value string
+				var valuebin []byte
+
+				enc := header.GetValue()
+				dec, err := base64.StdEncoding.DecodeString(string(enc))
+				if err != nil {
+					valuebin = enc
+				} else {
+					value = string(dec)
+				}
+				headers = append(headers, &public.Headers_Header{Name: header.GetName(), Value: value, ValueBin: valuebin})
 			}
 
 			return &public.Headers{
