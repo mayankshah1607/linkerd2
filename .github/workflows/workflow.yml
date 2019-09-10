@@ -480,3 +480,22 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/test-cleanup
+
+  #
+  # Helm chart artifact deploy run for:
+  # - every tag push
+  #
+
+  chart_deploy:
+    name: Helm chart deploy
+    runs-on: ubuntu-18.04
+    needs: [cloud_integration]
+    steps:
+    - name: Checkout code
+      if: startsWith(github.ref, 'refs/tags')
+      uses: actions/checkout@v1
+    - name: Helm chart creation
+      if: startsWith(github.ref, 'refs/tags')
+      run: |
+        bin/helm-build package
+        
