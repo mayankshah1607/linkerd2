@@ -498,4 +498,5 @@ jobs:
       if: startsWith(github.ref, 'refs/tags')
       run: |
         bin/helm-build package
-        
+        gsutil cp index.yaml gs://helm.linkerd.io/edge
+        gsutil cp 
