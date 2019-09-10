@@ -109,7 +109,10 @@ func newCmdTap() *cobra.Command {
 				Path:        options.path,
 			}
 
-			options.validate()
+			err := options.validate()
+			if err != nil {
+				return fmt.Errorf("Validation error when executing tap command: %v", err)
+			}
 
 			req, err := util.BuildTapByResourceRequest(requestParams)
 			if err != nil {
