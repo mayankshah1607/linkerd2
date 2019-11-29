@@ -9,12 +9,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
+
+//installConfig is used to obtain the linkerd install configurations
+//from linkerd-config ConfigMap
+type installConfig struct {
+	Uuid       string `json:"uuid"`
+	CliVersion string `json:"cliVersion"`
+	Flags      []struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+	} `json:"flags"`
+}
 
 type checkOptions struct {
 	versionOverride string
@@ -138,10 +152,16 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
+
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.KubernetesVersionChecks,
 		healthcheck.LinkerdVersionChecks,
+	}
+
+	if ha,err := isHAEnabled(); !ha && err == nil {
+		checks = append(checks,
+			healthcheck.LinkerdControlPlaneHAChecks,)
 	}
 
 	if options.preInstallOnly {
@@ -330,4 +350,22 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker
 		fmt.Fprintf(werr, "JSON serialization of the check result failed with %s", err)
 	}
 	return result
+}
+
+func isHAEnabled() (bool, error) {
+	var api, _ = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+	var confMap, _ = api.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+	var installOpts installConfig
+	err := json.Unmarshal([]byte(confMap.Data["install"]), &installOpts)
+
+	if err != nil {
+		return false, err
+	}
+
+	for _, flag := range installOpts.Flags {
+		if flag.Name == "ha" && flag.Value == "true" {
+			return true, nil
+		}
+	}
+	return false, nil
 }

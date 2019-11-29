@@ -115,6 +115,15 @@ const (
 	// The value is expected to be "true", "false" or "", where "false" and
 	// "" are equal, making "false" the default
 	linkerdCniResourceLabel = "linkerd.io/cni-resource"
+
+	//LinkerdControlPlaneHAChecks adds a series of checks to the control plane
+	//to validate the properties of HA Control Planes such as :
+	//*The control plane components (except, for web, grafana and prometheus) should have more than one replicas.
+	//*The replicated pods should be scheduled on different hosts.
+	//*The MWC and VWC's FailurePolicy should be set to Fail to prevent uninjected workloads from entering the service mesh.
+	//*The control plane components are assigned CPU and memory resource requirements.
+	//*kube-system has the inject skip annotation.
+	LinkerdControlPlaneHAChecks CategoryID = "linkerd-ha-check"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -865,6 +874,33 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 			},
 		},
+		{
+			id: LinkerdControlPlaneHAChecks,
+			checkers: []checker{
+				{
+					description: "control plane components have more than one replicas",
+					hintAnchor:  "ha-control-plane-replicas",
+					check: func(context.Context) error {
+						return hc.checkAvailableReplicas(hc.ControlPlaneNamespace)
+					},
+				},
+				{
+					description: "kube-system has inject skip annotation",
+					hintAnchor:"kube-system-inject-skip",
+					warning: true,
+					check: func(ctx context.Context) error {
+						ns, err := hc.kubeAPI.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						if ns.Annotations[k8s.ProxyInjectAnnotation] != k8s.ProxyInjectDisabled {
+							return fmt.Errorf("kube-system has proxy-inject enabled")
+						}
+						return nil
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1351,6 +1387,29 @@ func (hc *HealthChecker) checkCanPerformAction(verb, namespace, group, version, 
 		resource,
 		"",
 	)
+}
+
+func (hc *HealthChecker) checkAvailableReplicas(namespace string) error {
+	//These componenets must have more than one replica
+	var components = []string{
+		"linkerd-controller",
+		"linkerd-destination",
+		"linkerd-identity",
+		"linkerd-proxy-injector",
+		"linkerd-sp-validator",
+		"linkerd-tap",
+	}
+
+	for _, component := range components {
+		deploy, err := hc.kubeAPI.AppsV1().Deployments(namespace).Get(component, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if deploy.Status.AvailableReplicas == 1 {
+			return fmt.Errorf("%s has only %d replicas available", component, deploy.Status.AvailableReplicas)
+		}
+	}
+	return nil
 }
 
 func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
