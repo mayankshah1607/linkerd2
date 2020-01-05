@@ -941,3 +941,73 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 	}
 	return yaml.Marshal(ns)
 }
+
+//RemoveEmpty removes the suspected empty fields from a processed yaml.
+//The field that is suspected to be empty must be explicitly mentioned
+//in `targetFields` map. The key of this map must be the yaml key of the
+//suspected field, and the value of must be an interface that corresponds to the
+//yaml value of the suspected field
+func RemoveEmpty(yamlBytes []byte) ([]byte, error) {
+	j, err := yaml.YAMLToJSON(yamlBytes)
+	if err != nil {
+		return nil, err
+	}
+	var jsonObj interface{}
+	err = json.Unmarshal(j, &jsonObj)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonMap := jsonObj.(map[string]interface{})
+
+	targetFields := map[string]interface{}{
+		"spec":      jsonMap,
+		"status":    jsonMap,
+		"strategy":  jsonMap["spec"].(map[string]interface{}),
+		"resources": jsonMap["spec"].(map[string]interface{})["template"].(map[string]interface{})["spec"].(map[string]interface{})["containers"].([]interface{}),
+	}
+
+	filter(&targetFields)
+
+	filteredJson, err := json.Marshal(jsonMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return yaml.JSONToYAML(filteredJson)
+}
+
+func isFieldEmpty(i interface{}) bool {
+	m := i.(map[string]interface{})
+	if len(m) != 0 {
+		return false
+	}
+	return true
+}
+
+func filter(targetFields *map[string]interface{}) {
+	for k, v := range *targetFields {
+		if v != nil {
+			switch v.(type) {
+			case map[string]interface{}:
+				m := v.(map[string]interface{}) //Convert interface back to map
+				if isFieldEmpty(m[k]) {
+					delete(m, k)
+				}
+
+			case []interface{}:
+				m := v.([]interface{})
+				if k == "resources" {
+					for _, i := range m {
+						container := i.(map[string]interface{})
+						if isFieldEmpty(container[k]) {
+							delete(container, k)
+						}
+					}
+				}
+			default:
+				log.Errorf("could not find associated type")
+			}
+		}
+	}
+}

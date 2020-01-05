@@ -78,8 +78,11 @@ func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.
 		output = bytes
 		report.UnsupportedResource = true
 	}
-
-	return output, []inject.Report{*report}, nil
+	filteredYaml, err := inject.RemoveEmpty(output)
+	if err != nil {
+		return nil, nil, err
+	}
+	return filteredYaml, []inject.Report{*report}, nil
 }
 
 func (rt resourceTransformerUninjectSilent) transform(bytes []byte) ([]byte, []inject.Report, error) {
